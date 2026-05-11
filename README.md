@@ -267,6 +267,21 @@ standby/
 
 ---
 
+## Installing on Another Mac
+
+Standby is not notarized with Apple, so macOS will block it on first launch. To open it:
+
+1. Drag **Standby.app** to your Applications folder
+2. Open **Terminal** and run:
+   ```bash
+   xattr -cr /Applications/Standby.app
+   ```
+3. Launch Standby normally from Applications or Spotlight
+
+You only need to do this once. After that it opens like any other app.
+
+---
+
 ## Troubleshooting
 
 **Phones can't reach the server**
