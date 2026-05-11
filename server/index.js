@@ -49,14 +49,14 @@ server.listen(PORT, () => {
   logger.info(`Web client: http://localhost:${PORT}/`);
   logger.info(`Console:    http://localhost:${PORT}/console.html`);
   // Tell the Electron parent (if running) that we're up.
-  if (process.send) process.send({ type: 'ready', port: PORT });
+  if (process.send) { process.send({ type: 'ready', port: PORT }); }
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     logger.error(`Port ${PORT} is already in use — another process may be running`);
     // Tell Electron so it can surface the error in the tray.
-    if (process.send) process.send({ type: 'error', code: 'EADDRINUSE', port: PORT });
+    if (process.send) { process.send({ type: 'error', code: 'EADDRINUSE', port: PORT }); }
     process.exit(1);
   }
 });

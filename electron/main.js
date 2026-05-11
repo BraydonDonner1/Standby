@@ -3,7 +3,7 @@
 // electron/main.js — Standby menu-bar app.
 // Manages the embedded Node server and exposes controls via the macOS tray.
 
-const { app, Tray, Menu, shell, nativeImage, BrowserWindow, clipboard } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, clipboard } = require('electron');
 const { fork, exec } = require('child_process');
 const path  = require('path');
 const fs    = require('fs');
@@ -33,7 +33,7 @@ let consoleWin  = null;
 // ── Server lifecycle ──────────────────────────────────────────────────────────
 
 function startServer() {
-  if (serverProc) return;
+  if (serverProc) { return; }
   serverError = null;
 
   serverProc = fork(SERVER_MAIN, [], {
@@ -55,14 +55,14 @@ function startServer() {
   });
 
   serverProc.on('error', (err) => {
-    console.error('[standby] Server error:', err.message);
+    process.stderr.write(`[standby] Server error: ${err.message}\n`);
     serverReady = false;
     serverProc  = null;
     rebuildMenu();
   });
 
   serverProc.on('exit', (code) => {
-    console.log('[standby] Server exited with code', code);
+    process.stdout.write(`[standby] Server exited with code ${code}\n`);
     serverReady = false;
     serverProc  = null;
     rebuildMenu();
@@ -71,13 +71,16 @@ function startServer() {
 
 function stopServer(onStopped) {
   const cb = typeof onStopped === 'function' ? onStopped : null;
-  if (!serverProc) { if (cb) cb(); return; }
+  if (!serverProc) {
+    if (cb) { cb(); }
+    return;
+  }
   const proc = serverProc;
   serverProc  = null;
   serverReady = false;
   rebuildMenu();
   // Register exit listener BEFORE sending signal so we never miss the event.
-  if (cb) proc.once('exit', cb);
+  if (cb) { proc.once('exit', cb); }
   proc.kill('SIGTERM');
 }
 
@@ -129,7 +132,7 @@ function forceRestartServer(port) {
 }
 
 function rebuildMenu() {
-  if (!tray) return;
+  if (!tray) { return; }
 
   const port = loadPort();
   const statusLine = serverReady

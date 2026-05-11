@@ -7,7 +7,7 @@
     "start": "node server/index.js",
     "electron": "electron .",
     "build:mac": "electron-builder --mac",
-    "lint": "eslint server/"
+    "lint": "eslint server/ electron/"
   },
   "engines": {
     "node": ">=18.0.0"

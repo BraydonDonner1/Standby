@@ -5,7 +5,7 @@
   },
   "parserOptions": {
     "ecmaVersion": 2022,
-    "sourceType": "module"
+    "sourceType": "commonjs"
   },
   "rules": {
     "no-var": "error",
