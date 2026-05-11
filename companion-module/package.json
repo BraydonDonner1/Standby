@@ -1,0 +1,20 @@
+{
+  "name": "companion-module-standby",
+  "version": "1.0.0",
+  "description": "Bitfocus Companion module for the Standby cue light system",
+  "type": "module",
+  "exports": "./src/main.js",
+  "scripts": {
+    "lint": "eslint src/"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@companion-module/base": "^1.8.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

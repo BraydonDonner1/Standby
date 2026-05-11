@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Standby Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --glass-bg:       rgba(255,255,255,0.07);
+      --glass-border:   rgba(255,255,255,0.13);
+      --glass-shine:    rgba(255,255,255,0.18);
+      --glass-shadow:   0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 var(--glass-shine);
+      --blur:           blur(24px) saturate(160%);
+      --text:           #f0f0f5;
+      --text-muted:     rgba(255,255,255,0.45);
+      --label-standby:  #ff8c00;
+      --label-go:       #4ade80;
+      --label-clear:    rgba(255,255,255,0.35);
+      --tint-standby:   rgba(255,140,  0, 0.18);
+      --tint-go:        rgba( 22,163, 74, 0.22);
+      --border-standby: rgba(255,140,  0, 0.45);
+      --border-go:      rgba( 22,163, 74, 0.45);
+      --btn-standby:    rgba(255,140,  0, 0.85);
+      --btn-go:         rgba( 22,163, 74, 0.85);
+      --btn-clear:      rgba(255,255,255,0.12);
+      --btn-danger:     rgba(220, 38, 38, 0.85);
+      --btn-primary:    rgba( 37, 99,235, 0.90);
+      --radius-card:    16px;
+      --radius-btn:     8px;
+    }
+
+    html, body { min-height: 100%; font-family: 'Teko', system-ui, -apple-system, sans-serif; color: var(--text); background: #07070f; }
+
+    /* ── Aurora background ── */
+    #bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #07070f; }
+    #bg.has-custom-bg { background-size: cover; background-position: center; }
+
+    .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; }
+    .blob-1 { width:70vw;height:70vw;background:radial-gradient(circle,rgba(255,140,0,.5) 0%,transparent 70%);top:-25%;left:-15%;animation:drift1 20s ease-in-out infinite; }
+    .blob-2 { width:55vw;height:55vw;background:radial-gradient(circle,rgba(234,88,12,.4) 0%,transparent 70%);bottom:-20%;right:-10%;animation:drift2 25s ease-in-out infinite; }
+    .blob-3 { width:45vw;height:45vw;background:radial-gradient(circle,rgba(251,191,36,.3) 0%,transparent 70%);top:35%;left:45%;animation:drift3 18s ease-in-out infinite; }
+    .blob-4 { width:35vw;height:35vw;background:radial-gradient(circle,rgba(180,83,9,.25) 0%,transparent 70%);top:60%;left:10%;animation:drift4 22s ease-in-out infinite; }
+
+    @keyframes drift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(4%,7%) scale(1.04)} 66%{transform:translate(-2%,4%) scale(.97)} }
+    @keyframes drift2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-6%,-4%) scale(1.05)} 66%{transform:translate(4%,-6%) scale(.96)} }
+    @keyframes drift3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-47%,-54%) scale(1.06)} }
+    @keyframes drift4 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(5%,-8%)} }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; gap: 12px; flex-wrap: wrap;
+      background: rgba(7,7,15,0.6);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    #header-logo { height: 32px; width: auto; display: block; }
+    #header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    #status-bar { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--text-muted); }
+    #status-text { display: none; }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.2); flex-shrink: 0; transition: background .3s, box-shadow .3s; }
+    #status-dot.connected { background: #ff8c00; box-shadow: 0 0 6px rgba(255,140,0,.7); }
+
+    .glass-btn {
+      padding: 9px 16px; font-size: .82rem; font-weight: 700; letter-spacing: .06em;
+      border-radius: var(--radius-btn); border: 1px solid var(--glass-border);
+      cursor: pointer; color: #fff;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      transition: filter .15s;
+    }
+    .glass-btn:active { filter: brightness(.85); }
+    #settings-btn  { background: rgba(255,255,255,.09); }
+    #clear-all-btn { background: var(--btn-danger); border-color: rgba(220,38,38,.5); }
+
+    /* ── Grid ── */
+    main { position: relative; z-index: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 14px; }
+
+    .channel-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border); border-radius: var(--radius-card);
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      box-shadow: var(--glass-shadow); transition: background .2s, border-color .2s, box-shadow .2s;
+    }
+    .channel-card.state-standby { background: var(--tint-standby); border-color: var(--border-standby); box-shadow: 0 4px 24px rgba(255,140,0,.2), inset 0 1px 0 var(--glass-shine); }
+    .channel-card.state-go      { background: var(--tint-go);      border-color: var(--border-go);      box-shadow: 0 4px 24px rgba(22,163,74,.2), inset 0 1px 0 var(--glass-shine); }
+    .channel-card.selected      { outline: 2px solid rgba(37,99,235,.8); outline-offset: 2px; }
+
+    .card-header { display: flex; align-items: center; gap: 8px; }
+    .channel-checkbox { width: 16px; height: 16px; accent-color: #60a5fa; cursor: pointer; flex-shrink: 0; }
+    .channel-name { flex: 1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 700; font-size: .88rem; letter-spacing: .05em; text-transform: uppercase; line-height: 1; }
+    .channel-id { font-size: .7rem; color: var(--text-muted); }
+
+    .state-label { font-size: 1.4rem; font-weight: 900; letter-spacing: .08em; }
+    .state-label.clear   { color: var(--label-clear); }
+    .state-label.standby { color: var(--label-standby); text-shadow: 0 0 20px rgba(251,191,36,.5); }
+    .state-label.go      { color: var(--label-go);      text-shadow: 0 0 20px rgba(74,222,128,.5); }
+
+    .ack-badge { display: none; align-items: center; gap: 5px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; color: #86efac; }
+    .ack-badge.visible { display: flex; }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; padding: 9px 4px; font-size: .75rem; font-weight: 700; letter-spacing: .05em; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; cursor: pointer; color: #fff; backdrop-filter: blur(8px); transition: filter .1s; }
+    .btn-row button:active { filter: brightness(.8); }
+    .btn-standby { background: var(--btn-standby); border-color: rgba(255,140,0,.5); }
+    .btn-go      { background: var(--btn-go);      border-color: rgba(22,163,74,.5); }
+    .btn-clear   { background: var(--btn-clear); }
+
+    /* ── Reconnect banner ── */
+    #reconnect-banner { display: none; position: relative; z-index: 1; background: rgba(127,29,29,.8); backdrop-filter: blur(12px); color: #fca5a5; text-align: center; padding: 10px; font-size: .88rem; font-weight: 600; border-bottom: 1px solid rgba(220,38,38,.4); }
+    #reconnect-banner.visible { display: block; }
+
+    /* ── Batch bar ── */
+    #batch-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,15,40,.88);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid rgba(37,99,235,.5);
+      box-shadow: 0 -4px 24px rgba(37,99,235,.15);
+      padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      z-index: 15; transform: translateY(100%);
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    }
+    #batch-bar.visible { transform: translateY(0); }
+    #batch-label { flex: 1; font-size: .85rem; font-weight: 600; color: #93c5fd; min-width: 120px; }
+    .batch-btn { padding: 9px 16px; font-size: .8rem; font-weight: 700; letter-spacing: .05em; border: 1px solid rgba(255,255,255,.12); border-radius: var(--radius-btn); cursor: pointer; color: #fff; }
+    .batch-btn:active { filter: brightness(.8); }
+    .batch-btn-standby  { background: var(--btn-standby); border-color: rgba(255,140,0,.5); }
+    .batch-btn-go       { background: var(--btn-go);      border-color: rgba(22,163,74,.5); }
+    .batch-btn-clear    { background: rgba(255,255,255,.1); }
+    .batch-btn-deselect { background: transparent; color: var(--text-muted); }
+    body.batch-active main { padding-bottom: 80px; }
+
+    /* ── Settings drawer (slides in from right) ── */
+    #settings-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 20;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    #settings-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    /* Panel lives outside the overlay so backdrop-filter never hijacks position:fixed */
+    #settings-panel {
+      position: fixed; right: 0; top: 0; bottom: 0;
+      width: min(440px, 100vw);
+      background: rgba(9,9,20,0.94);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-left: 1px solid var(--glass-border);
+      box-shadow: -8px 0 48px rgba(0,0,0,.6), inset 1px 0 0 var(--glass-shine);
+      border-radius: 20px 0 0 20px;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 24px;
+      z-index: 21;
+      transform: translateX(110%);
+      transition: transform .35s cubic-bezier(.16,1,.3,1);
+    }
+    #settings-overlay.visible + #settings-panel { transform: translateX(0); }
+
+    #settings-panel { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; }
+    .drawer-header h2 { font-family: 'Teko', system-ui, sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: .1em; }
+    #close-settings-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1; }
+    #close-settings-btn:hover { color: var(--text); background: rgba(255,255,255,.08); }
+
+    .settings-section { display: flex; flex-direction: column; gap: 12px; }
+    .section-title { font-size: .72rem; font-weight: 700; letter-spacing: .12em; color: var(--text-muted); text-transform: uppercase; }
+    .section-divider { border: none; border-top: 1px solid var(--glass-border); }
+
+    .hint { font-size: .8rem; color: var(--text-muted); }
+
+    /* Channel inputs */
+    #channel-inputs { display: flex; flex-direction: column; gap: 8px; }
+    .channel-row { display: flex; gap: 8px; align-items: center; }
+    .channel-row span { font-size: .75rem; color: var(--text-muted); width: 26px; flex-shrink: 0; text-align: right; }
+    .channel-row input { flex: 1; padding: 10px 14px; font-size: .9rem; font-family: inherit; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text); outline: none; transition: border-color .15s; }
+    .channel-row input:focus { border-color: rgba(37,99,235,.6); }
+    .remove-channel-btn { background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; padding: 4px 6px; border-radius: 4px; line-height: 1; }
+    .remove-channel-btn:hover { color: #f87171; background: rgba(220,38,38,.1); }
+
+    #add-channel-btn { align-self: flex-start; padding: 8px 14px; font-size: .82rem; font-weight: 600; background: rgba(255,255,255,.05); border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; color: var(--text-muted); cursor: pointer; transition: border-color .15s, color .15s; }
+    #add-channel-btn:hover { border-color: rgba(37,99,235,.5); color: var(--text); }
+
+    /* Background upload */
+    #bg-preview { width: 100%; height: 100px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(255,255,255,.04); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: .8rem; overflow: hidden; }
+    #bg-preview.has-image { border-color: rgba(37,99,235,.4); }
+
+    .bg-btn-row { display: flex; gap: 8px; }
+    #bg-choose-btn { flex: 1; padding: 10px; font-size: .82rem; font-weight: 600; background: rgba(37,99,235,.25); border: 1px solid rgba(37,99,235,.4); border-radius: 8px; color: #93c5fd; cursor: pointer; }
+    #bg-remove-btn { padding: 10px 14px; font-size: .82rem; font-weight: 600; background: rgba(220,38,38,.15); border: 1px solid rgba(220,38,38,.3); border-radius: 8px; color: #fca5a5; cursor: pointer; }
+    #bg-remove-btn:disabled { opacity: .35; cursor: not-allowed; }
+    #bg-file-input { display: none; }
+    #bg-status { font-size: .78rem; color: var(--text-muted); min-height: 1.1em; }
+
+    /* Save row */
+    #settings-footer { display: flex; gap: 10px; justify-content: flex-end; }
+    #save-settings-btn { padding: 10px 24px; font-size: .88rem; font-weight: 700; background: var(--btn-primary); border: 1px solid rgba(37,99,235,.5); border-radius: var(--radius-btn); color: #fff; cursor: pointer; }
+    #save-settings-btn:disabled { opacity: .4; cursor: not-allowed; }
+    #settings-error { font-size: .82rem; color: #f87171; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+
+  <div id="bg" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
+  <div id="reconnect-banner">WebSocket disconnected — reconnecting…</div>
+
+  <header>
+    <img id="header-logo" src="/assets/Standby_White_NoPos.svg" alt="Standby" />
+    <div id="header-controls">
+      <div id="status-bar">
+        <div id="status-dot"></div>
+        <span id="status-text">Connecting…</span>
+      </div>
+      <button class="glass-btn" id="settings-btn">&#9881; Settings</button>
+      <button class="glass-btn" id="clear-all-btn">CLEAR ALL</button>
+    </div>
+  </header>
+
+  <main id="channel-grid"></main>
+
+  <div id="batch-bar" role="toolbar" aria-label="Batch cue actions">
+    <span id="batch-label">0 channels selected</span>
+    <button class="batch-btn batch-btn-standby" data-batch="standby">STANDBY ALL</button>
+    <button class="batch-btn batch-btn-go"      data-batch="go">GO ALL</button>
+    <button class="batch-btn batch-btn-clear"   data-batch="clear">CLEAR ALL</button>
+    <button class="batch-btn batch-btn-deselect" id="deselect-all-btn">Deselect</button>
+  </div>
+
+  <!-- Settings drawer: overlay (backdrop) + panel are siblings so backdrop-filter
+       on the overlay cannot act as a containing block for the fixed panel -->
+  <div id="settings-overlay" aria-hidden="true"></div>
+
+  <div id="settings-panel" role="dialog" aria-label="Settings" aria-hidden="true">
+
+    <div class="drawer-header">
+      <h2>SETTINGS</h2>
+      <button id="close-settings-btn" aria-label="Close settings">&#10005;</button>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- Channels -->
+    <div class="settings-section">
+      <p class="section-title">Channels</p>
+      <p class="hint">Saving resets all cue states to CLEAR.</p>
+      <div id="channel-inputs"></div>
+      <button id="add-channel-btn">+ Add Channel</button>
+      <p id="settings-error" aria-live="polite"></p>
+      <div id="settings-footer">
+        <button id="save-settings-btn">Save &amp; Apply</button>
+      </div>
+    </div>
+
+    <hr class="section-divider" />
+
+    <!-- Background image -->
+    <div class="settings-section">
+      <p class="section-title">Background Image</p>
+      <div id="bg-preview">No custom background</div>
+      <div class="bg-btn-row">
+        <button id="bg-choose-btn">Choose Image</button>
+        <button id="bg-remove-btn" disabled>Remove</button>
+      </div>
+      <input type="file" id="bg-file-input" accept="image/jpeg,image/png,image/webp,image/gif" />
+      <p id="bg-status"></p>
+    </div>
+
+  </div>
+
+<script>
+  const RECONNECT_DELAY_MS = 3000;
+
+  const bgEl             = document.getElementById('bg');
+  const gridEl           = document.getElementById('channel-grid');
+  const clearAllBtn      = document.getElementById('clear-all-btn');
+  const statusDot        = document.getElementById('status-dot');
+  const statusText       = document.getElementById('status-text');
+  const reconnectBanner  = document.getElementById('reconnect-banner');
+  const batchBar         = document.getElementById('batch-bar');
+  const batchLabel       = document.getElementById('batch-label');
+  const deselectAllBtn   = document.getElementById('deselect-all-btn');
+  const settingsBtn      = document.getElementById('settings-btn');
+  const settingsOverlay  = document.getElementById('settings-overlay');
+  const closeSettingsBtn = document.getElementById('close-settings-btn');
+  const channelInputsEl  = document.getElementById('channel-inputs');
+  const addChannelBtn    = document.getElementById('add-channel-btn');
+  const saveSettingsBtn  = document.getElementById('save-settings-btn');
+  const settingsError    = document.getElementById('settings-error');
+  const bgPreview        = document.getElementById('bg-preview');
+  const bgChooseBtn      = document.getElementById('bg-choose-btn');
+  const bgRemoveBtn      = document.getElementById('bg-remove-btn');
+  const bgFileInput      = document.getElementById('bg-file-input');
+  const bgStatus         = document.getElementById('bg-status');
+
+  let socket = null;
+  let reconnectTimer = null;
+  const selectedIds = new Set();
+
+  // ── Custom background ─────────────────────────────────────────────────────
+
+  async function loadBackground() {
+    try {
+      const res = await fetch('/background');
+      if (!res.ok) { return; }
+      const { background } = await res.json();
+      applyBackground(background);
+    } catch (_err) {}
+  }
+
+  function applyBackground(meta) {
+    if (meta?.filename) {
+      const url = `/uploads/${meta.filename}`;
+      bgEl.style.backgroundImage = `url('${url}')`;
+      bgEl.classList.add('has-custom-bg');
+      bgPreview.style.backgroundImage = `url('${url}')`;
+      bgPreview.classList.add('has-image');
+      bgPreview.textContent = '';
+      bgRemoveBtn.disabled = false;
+    } else {
+      bgEl.style.backgroundImage = '';
+      bgEl.classList.remove('has-custom-bg');
+      bgPreview.style.backgroundImage = '';
+      bgPreview.classList.remove('has-image');
+      bgPreview.textContent = 'No custom background';
+      bgRemoveBtn.disabled = true;
+    }
+  }
+
+  bgChooseBtn.addEventListener('click', () => bgFileInput.click());
+
+  bgFileInput.addEventListener('change', async () => {
+    const file = bgFileInput.files[0];
+    if (!file) { return; }
+    bgStatus.textContent = 'Uploading…';
+    try {
+      const res = await fetch('/background', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: await file.arrayBuffer(),
+      });
+      const data = await res.json();
+      if (!res.ok) { bgStatus.textContent = data.error || 'Upload failed'; return; }
+      applyBackground(data.background);
+      bgStatus.textContent = 'Background updated.';
+    } catch (err) {
+      bgStatus.textContent = `Upload error: ${err.message}`;
+    }
+    bgFileInput.value = '';
+  });
+
+  bgRemoveBtn.addEventListener('click', async () => {
+    try {
+      await fetch('/background', { method: 'DELETE' });
+      applyBackground(null);
+      bgStatus.textContent = 'Background removed.';
+    } catch (err) {
+      bgStatus.textContent = `Error: ${err.message}`;
+    }
+  });
+
+  loadBackground();
+
+  // ── Selection ─────────────────────────────────────────────────────────────
+
+  function setSelected(id, selected) {
+    if (selected) { selectedIds.add(id); } else { selectedIds.delete(id); }
+    const card = gridEl.querySelector(`.channel-card[data-id="${id}"]`);
+    if (card) {
+      card.classList.toggle('selected', selected);
+      const cb = card.querySelector('.channel-checkbox');
+      if (cb) { cb.checked = selected; }
+    }
+    const count = selectedIds.size;
+    batchBar.classList.toggle('visible', count > 0);
+    document.body.classList.toggle('batch-active', count > 0);
+    batchLabel.textContent = `${count} channel${count !== 1 ? 's' : ''} selected`;
+  }
+
+  function clearSelection() { [...selectedIds].forEach(id => setSelected(id, false)); }
+
+  // ── Grid ──────────────────────────────────────────────────────────────────
+
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function renderGrid(channels) {
+    clearSelection();
+    gridEl.innerHTML = '';
+    channels.forEach(ch => {
+      const card = document.createElement('div');
+      card.className = `channel-card state-${ch.state}`;
+      card.dataset.id = ch.id;
+      card.innerHTML = `
+        <div class="card-header">
+          <input type="checkbox" class="channel-checkbox" data-id="${ch.id}" aria-label="Select ${escapeHtml(ch.name)}" />
+          <span class="channel-name">${escapeHtml(ch.name)}</span>
+          <span class="channel-id">CH ${ch.id}</span>
+        </div>
+        <div class="state-label ${ch.state}">${ch.state.toUpperCase()}</div>
+        <div class="ack-badge ${ch.acked ? 'visible' : ''}">&#10003; READY</div>
+        <div class="btn-row">
+          <button class="btn-standby" data-id="${ch.id}" data-action="standby">STANDBY</button>
+          <button class="btn-go"      data-id="${ch.id}" data-action="go">GO</button>
+          <button class="btn-clear"   data-id="${ch.id}" data-action="clear">CLEAR</button>
+        </div>`;
+      gridEl.appendChild(card);
+    });
+  }
+
+  function updateCard(ch) {
+    const card = gridEl.querySelector(`.channel-card[data-id="${ch.id}"]`);
+    if (!card) { return; }
+    card.className = `channel-card state-${ch.state}${selectedIds.has(ch.id) ? ' selected' : ''}`;
+    const lbl = card.querySelector('.state-label');
+    lbl.className = `state-label ${ch.state}`;
+    lbl.textContent = ch.state.toUpperCase();
+    card.querySelector('.channel-name').textContent = ch.name;
+    card.querySelector('.ack-badge').classList.toggle('visible', !!ch.acked);
+  }
+
+  gridEl.addEventListener('change', (e) => {
+    const cb = e.target.closest('.channel-checkbox');
+    if (cb) { setSelected(parseInt(cb.dataset.id, 10), cb.checked); }
+  });
+
+  gridEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) { return; }
+    try {
+      await fetch(`/cue/${btn.dataset.id}/${btn.dataset.action}`, { method: 'POST' });
+    } catch (err) { console.error('Cue error:', err.message); }
+  });
+
+  clearAllBtn.addEventListener('click', async () => {
+    try { await fetch('/all/clear', { method: 'POST' }); } catch (err) { console.error(err.message); }
+  });
+
+  batchBar.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-batch]');
+    if (!btn) { return; }
+    try {
+      await fetch('/cue/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...selectedIds], action: btn.dataset.batch }),
+      });
+    } catch (err) { console.error('Batch error:', err.message); }
+  });
+
+  deselectAllBtn.addEventListener('click', clearSelection);
+
+  // ── Settings drawer ───────────────────────────────────────────────────────
+
+  function buildChannelRow(name, index) {
+    const row = document.createElement('div');
+    row.className = 'channel-row';
+    row.innerHTML = `<span>${index}</span><input type="text" maxlength="24" value="${escapeHtml(name)}" placeholder="Channel name" /><button class="remove-channel-btn" title="Remove">&#10005;</button>`;
+    row.querySelector('.remove-channel-btn').addEventListener('click', () => {
+      row.remove();
+      channelInputsEl.querySelectorAll('.channel-row').forEach((r, i) => { r.querySelector('span').textContent = i; });
+    });
+    return row;
+  }
+
+  const settingsPanel = document.getElementById('settings-panel');
+
+  async function openSettings() {
+    settingsError.textContent = '';
+    channelInputsEl.innerHTML = '';
+    saveSettingsBtn.disabled = false;
+    try {
+      const res = await fetch('/config');
+      const data = await res.json();
+      data.channels.forEach((name, i) => channelInputsEl.appendChild(buildChannelRow(name, i)));
+    } catch (err) { settingsError.textContent = `Could not load config: ${err.message}`; }
+    settingsOverlay.classList.add('visible');
+    settingsOverlay.setAttribute('aria-hidden', 'false');
+    settingsPanel.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeSettings() {
+    settingsOverlay.classList.remove('visible');
+    settingsOverlay.setAttribute('aria-hidden', 'true');
+    settingsPanel.setAttribute('aria-hidden', 'true');
+  }
+
+  addChannelBtn.addEventListener('click', () => {
+    const index = channelInputsEl.querySelectorAll('.channel-row').length;
+    channelInputsEl.appendChild(buildChannelRow('', index));
+  });
+
+  settingsBtn.addEventListener('click', openSettings);
+  closeSettingsBtn.addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', (e) => { if (e.target === settingsOverlay) { closeSettings(); } });
+
+  saveSettingsBtn.addEventListener('click', async () => {
+    const names = Array.from(channelInputsEl.querySelectorAll('input')).map(i => i.value.trim()).filter(n => n.length > 0);
+    if (names.length === 0) { settingsError.textContent = 'You need at least one channel.'; return; }
+    saveSettingsBtn.disabled = true;
+    settingsError.textContent = '';
+    try {
+      const res = await fetch('/config/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channels: names }),
+      });
+      const data = await res.json();
+      if (!res.ok) { settingsError.textContent = data.error || `Save failed`; saveSettingsBtn.disabled = false; return; }
+      closeSettings();
+    } catch (err) { settingsError.textContent = `Save error: ${err.message}`; saveSettingsBtn.disabled = false; }
+  });
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+
+  function openWebSocket() {
+    clearTimeout(reconnectTimer);
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    socket = new WebSocket(`${protocol}//${location.host}`);
+    socket.addEventListener('open', () => {
+      statusDot.className = 'connected';
+      statusText.textContent = 'Connected';
+      reconnectBanner.classList.remove('visible');
+    });
+    socket.addEventListener('message', (event) => {
+      let msg; try { msg = JSON.parse(event.data); } catch (_e) { return; }
+      if (msg.type === 'state' && Array.isArray(msg.channels)) {
+        if (gridEl.children.length !== msg.channels.length) { renderGrid(msg.channels); }
+        else { msg.channels.forEach(updateCard); }
+      }
+    });
+    socket.addEventListener('close', () => {
+      statusDot.className = '';
+      statusText.textContent = 'Disconnected';
+      reconnectBanner.classList.add('visible');
+      reconnectTimer = setTimeout(openWebSocket, RECONNECT_DELAY_MS);
+    });
+    socket.addEventListener('error', () => {});
+  }
+
+  openWebSocket();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "channels": [
+    "Host",
+    "Lights",
+    "FOH",
+    "Monitor",
+    "Band A",
+    "Video",
+    "Keys",
+    "Drums"
+  ],
+  "port": 3000
+}

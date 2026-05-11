@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+companion-module/node_modules/
+
+# Build output
+dist/
+
+# Uploaded background images (created at runtime)
+client/uploads/*
+!client/uploads/.gitkeep
+
+# Local config — copy config.example.json and fill in your channels
+config.json
+
+# Source branding files — not needed to run the app
+BRANDING/
+
+# macOS
+.DS_Store
+
+# IDE / editor tooling
+.claude/
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Electron builder cache
+.cache/

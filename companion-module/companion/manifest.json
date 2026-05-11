@@ -1,0 +1,11 @@
+{
+  "id": "crchurch-standby",
+  "name": "Standby Cue Light",
+  "shortname": "Standby",
+  "description": "Real-time cue light control and performer acknowledgement for live production",
+  "version": "1.0.0",
+  "license": "MIT",
+  "manufacturer": "CR Church",
+  "products": ["Standby Server"],
+  "keywords": ["cue", "light", "standby", "production", "live"]
+}

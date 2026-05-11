@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Standby</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --glass-bg:     rgba(255,255,255,0.10);
+      --glass-border: rgba(255,255,255,0.18);
+      --glass-shine:  rgba(255,255,255,0.22);
+      --blur:         blur(28px) saturate(160%);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Teko', system-ui, -apple-system, sans-serif;
+      color: #fff;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+
+    /* ── Background ───────────────────────────────────────────────────────── */
+    #bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #0a0a12;
+      background-size: cover;
+      background-position: center;
+      transition: background-color 0.4s ease;
+      overflow: hidden;
+    }
+
+    /* Color tint overlay — sits above bg image but below blobs */
+    #bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      transition: background 0.4s ease;
+    }
+    #bg.state-standby { background-color: #7c3c00; }
+    #bg.state-go      { background-color: #14532d; }
+    /* When a custom image is set, tint via ::after so the image stays visible */
+    #bg.has-image.state-standby { background-color: #0a0a12; }
+    #bg.has-image.state-go      { background-color: #0a0a12; }
+    #bg.has-image.state-standby::after { background: rgba(255,140,0, 0.65); }
+    #bg.has-image.state-go::after      { background: rgba(20,  83, 45, 0.72); }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(70px);
+      opacity: 0.5;
+      transition: opacity 0.4s;
+      z-index: 1;
+    }
+    /* Blobs fade when a solid state color is showing */
+    #bg.state-standby .blob,
+    #bg.state-go      .blob { opacity: 0.15; }
+
+    .blob-1 { width:80vw;height:80vw;background:radial-gradient(circle,rgba(255,140,0,.5) 0%,transparent 70%);top:-30%;left:-20%;animation:drift1 20s ease-in-out infinite; }
+    .blob-2 { width:65vw;height:65vw;background:radial-gradient(circle,rgba(234,88,12,.4) 0%,transparent 70%);bottom:-25%;right:-15%;animation:drift2 25s ease-in-out infinite; }
+    .blob-3 { width:50vw;height:50vw;background:radial-gradient(circle,rgba(251,191,36,.3) 0%,transparent 70%);top:40%;left:40%;animation:drift3 18s ease-in-out infinite; }
+
+    @keyframes drift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(6%,10%)} }
+    @keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-8%,-6%)} }
+    @keyframes drift3 { 0%,100%{transform:translate(-50%,-50%)} 50%{transform:translate(-44%,-56%)} }
+
+    /* ── Channel picker (bottom sheet) ────────────────────────────────────── */
+    #picker {
+      position: fixed; inset: 0; z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* Title floats in the upper portion of the screen */
+    #picker-title {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    #picker-logo {
+      width: clamp(220px, 58vw, 340px);
+      height: auto;
+      filter: drop-shadow(0 2px 32px rgba(0,0,0,0.5));
+    }
+
+    #picker-title p {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.06em;
+    }
+
+    /* Sheet anchored to the bottom */
+    #picker-sheet {
+      width: 100%;
+      background: rgba(9,9,20,0.88);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid var(--glass-border);
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.5), inset 0 1px 0 var(--glass-shine);
+      padding: 12px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Drag handle visual */
+    #picker-sheet::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 2px;
+      margin: 0 auto 4px;
+    }
+
+    #channel-select {
+      width: 100%;
+      padding: 16px 18px;
+      font-size: 1.1rem;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      color: #fff;
+      appearance: none;
+      cursor: pointer;
+      outline: none;
+    }
+    #channel-select option { background: #1a1a2e; color: #fff; }
+
+    #connect-btn {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      border: 1px solid rgba(255,140,0,0.5);
+      border-radius: 14px;
+      background: rgba(255,140,0,0.85);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: 0 4px 24px rgba(255,140,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+      color: #fff;
+      cursor: pointer;
+    }
+    #connect-btn:active { filter: brightness(0.85); }
+
+    #picker-error {
+      color: #fca5a5;
+      font-size: 0.88rem;
+      min-height: 1.2em;
+      text-align: center;
+    }
+
+    /* ── Cue display ──────────────────────────────────────────────────────── */
+    #display {
+      display: none;
+      position: fixed; inset: 0; z-index: 2;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px 24px;
+    }
+
+    #cue-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 36px clamp(20px, 8vw, 52px);
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 32px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.5), inset 0 1px 0 var(--glass-shine);
+      text-align: center;
+      user-select: none;
+      max-width: calc(100vw - 32px);
+    }
+
+    #channel-name {
+      font-size: clamp(0.9rem, 4vw, 1.6rem);
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.72;
+    }
+
+    #state-label {
+      font-size: clamp(3rem, 14vw, 8rem);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    #bg.state-standby ~ * #state-label { text-shadow: 0 0 48px rgba(255,140,0,0.8); }
+    #bg.state-go      ~ * #state-label { text-shadow: 0 0 48px rgba(74,222,128,0.7); }
+
+    #ack-btn {
+      display: none;
+      padding: 18px 44px;
+      font-size: clamp(1rem, 4.5vw, 1.5rem);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 var(--glass-shine);
+      color: #fff;
+      cursor: pointer;
+    }
+    #ack-btn:active { filter: brightness(0.8); }
+
+    #ack-confirmed {
+      display: none;
+      font-size: clamp(0.9rem, 3.5vw, 1.2rem);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #86efac;
+      text-shadow: 0 0 16px rgba(74,222,128,0.5);
+    }
+
+    /* ── Reconnecting overlay ─────────────────────────────────────────────── */
+    #reconnect-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 10;
+    }
+    #reconnect-overlay.visible { display: flex; }
+    #reconnect-overlay span { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.04em; }
+
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="bg" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- Channel picker — bottom sheet layout -->
+  <div id="picker">
+    <div id="picker-title">
+      <img id="picker-logo" src="/assets/Standby_White.svg" alt="Standby" />
+      <p>Select your channel to connect</p>
+    </div>
+    <div id="picker-sheet">
+      <select id="channel-select" aria-label="Select your channel">
+        <option value="" disabled selected>Loading channels…</option>
+      </select>
+      <button id="connect-btn">Connect</button>
+      <p id="picker-error" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- Full-screen cue display -->
+  <div id="display" role="status" aria-live="assertive">
+    <div id="cue-card">
+      <span id="channel-name"></span>
+      <span id="state-label">CLEAR</span>
+    </div>
+    <button id="ack-btn">I'm Ready</button>
+    <span id="ack-confirmed">&#10003; Acknowledged</span>
+  </div>
+
+  <div id="reconnect-overlay" aria-live="polite">
+    <div class="spinner"></div>
+    <span>Reconnecting…</span>
+  </div>
+
+<script>
+  const RECONNECT_DELAY_MS = 3000;
+
+  const bgEl             = document.getElementById('bg');
+  const pickerEl         = document.getElementById('picker');
+  const displayEl        = document.getElementById('display');
+  const selectEl         = document.getElementById('channel-select');
+  const connectBtn       = document.getElementById('connect-btn');
+  const pickerError      = document.getElementById('picker-error');
+  const channelNameEl    = document.getElementById('channel-name');
+  const stateLabelEl     = document.getElementById('state-label');
+  const ackBtn           = document.getElementById('ack-btn');
+  const ackConfirmed     = document.getElementById('ack-confirmed');
+  const reconnectOverlay = document.getElementById('reconnect-overlay');
+
+  let selectedChannelId = null;
+  let socket = null;
+  let reconnectTimer = null;
+
+  // ── Background ────────────────────────────────────────────────────────────
+
+  async function loadBackground() {
+    try {
+      const res = await fetch('/background');
+      if (!res.ok) { return; }
+      const { background } = await res.json();
+      if (background?.filename) {
+        bgEl.style.backgroundImage = `url('/uploads/${background.filename}')`;
+        bgEl.classList.add('has-image');
+      }
+    } catch (_err) {}
+  }
+
+  loadBackground();
+
+  // ── Channel picker ────────────────────────────────────────────────────────
+
+  async function loadChannels() {
+    try {
+      const res = await fetch('/state');
+      if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
+      const data = await res.json();
+      selectEl.innerHTML = '<option value="" disabled selected>Select your channel…</option>';
+      data.channels.forEach(ch => {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = ch.name;
+        selectEl.appendChild(opt);
+      });
+    } catch (_err) {
+      pickerError.textContent = 'Could not load channels. Is the server running?';
+    }
+  }
+
+  loadChannels();
+
+  connectBtn.addEventListener('click', () => {
+    if (!selectEl.value) { pickerError.textContent = 'Please select a channel first.'; return; }
+    selectedChannelId = parseInt(selectEl.value, 10);
+    pickerError.textContent = '';
+    pickerEl.style.display = 'none';
+    displayEl.style.display = 'flex';
+    openWebSocket();
+  });
+
+  function showPicker(reason) {
+    displayEl.style.display = 'none';
+    pickerEl.style.display = 'flex';
+    bgEl.className = bgEl.classList.contains('has-image') ? 'has-image' : '';
+    selectedChannelId = null;
+    if (reason) { pickerError.textContent = reason; }
+    loadChannels();
+  }
+
+  // ── State display ─────────────────────────────────────────────────────────
+
+  function applyState(cueState, channelName, acked) {
+    const hasImage = bgEl.classList.contains('has-image');
+    bgEl.className = `state-${cueState}${hasImage ? ' has-image' : ''}`;
+    stateLabelEl.textContent = cueState.toUpperCase();
+    if (channelName !== undefined) { channelNameEl.textContent = channelName; }
+    document.title = `${cueState.toUpperCase()} — ${channelNameEl.textContent}`;
+    ackBtn.style.display       = (cueState === 'standby' && !acked) ? 'block' : 'none';
+    ackConfirmed.style.display = (cueState === 'standby' &&  acked) ? 'block' : 'none';
+  }
+
+  ackBtn.addEventListener('click', async () => {
+    ackBtn.style.display = 'none';
+    ackConfirmed.style.display = 'block';
+    try {
+      await fetch(`/ack/${selectedChannelId}`, { method: 'POST' });
+    } catch (err) { console.error('Ack error:', err.message); }
+  });
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+
+  function openWebSocket() {
+    clearTimeout(reconnectTimer);
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    socket = new WebSocket(`${protocol}//${location.host}`);
+    socket.addEventListener('open', () => reconnectOverlay.classList.remove('visible'));
+    socket.addEventListener('message', (event) => {
+      let msg; try { msg = JSON.parse(event.data); } catch (_e) { return; }
+      if (msg.type === 'state' && Array.isArray(msg.channels)) {
+        const ch = msg.channels.find(c => c.id === selectedChannelId);
+        if (!ch) { showPicker('Channel configuration changed — please re-select.'); return; }
+        applyState(ch.state, ch.name, ch.acked);
+      }
+    });
+    socket.addEventListener('close', () => {
+      reconnectOverlay.classList.add('visible');
+      reconnectTimer = setTimeout(openWebSocket, RECONNECT_DELAY_MS);
+    });
+    socket.addEventListener('error', () => {});
+  }
+</script>
+</body>
+</html>
