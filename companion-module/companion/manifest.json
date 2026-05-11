@@ -5,7 +5,22 @@
   "description": "Real-time cue light control and performer acknowledgement for live production",
   "version": "1.0.0",
   "license": "MIT",
-  "manufacturer": "CR Church",
-  "products": ["Standby Server"],
-  "keywords": ["cue", "light", "standby", "production", "live"]
+  "manufacturer": "Standby",
+  "products": ["Cue Light Server"],
+  "keywords": ["cue", "light", "standby", "production", "live"],
+  "repository": "https://github.com/BraydonDonner1/Standby",
+  "bugs": "https://github.com/BraydonDonner1/Standby/issues",
+  "maintainers": [
+    {
+      "name": "Braydon Donner",
+      "email": "braydon.donner@crchurch.cc"
+    }
+  ],
+  "legacyIds": [],
+  "runtime": {
+    "type": "node18",
+    "api": "nodejs-ipc",
+    "apiVersion": "1.14.1",
+    "entrypoint": "../src/main.js"
+  }
 }
